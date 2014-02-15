@@ -161,6 +161,7 @@ $(function () {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
             controls.update();
+			$('#date-display').text(currentTime);
             stats.end();
         }
         animate();

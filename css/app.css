@@ -1,2 +1,9 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
+
+#date-display{
+	position:absolute;
+	z-index:9001;
+	color:red;
+	margin-top: 100px;
+}
