@@ -6,9 +6,22 @@ $(function () {
         trip.birthyear = trip.birthyear ? new Date(trip.birthyear) : false;
         return trip;
     }
+	
+	//hard-coded for now: State St & Harrison St,41.87395806,-87.62773949
+	var originLatitude = 41.87395806;
+	var originLongitude = -87.62773949;
 
     function processStation(station) {
+		// scalingFactor will eventually be dynamic, but for now: 1 degree latitude ~= 69 miles, 1 longitude varies  but around Chicago ~= 53 miles
+		// at most we're probably looking at around a quarter degree max difference in either direction (and probably much smaller than that)
+		var scalingFactor = 10000;
+		
         station.dpcapacity = parseInt(station.dpcapacity);
+		station.latitude = parseFloat(station.latitude);
+		station.longitude = parseFloat(station.longitude);
+		station.x = (station.longitude - originLongitude) * scalingFactor;
+		station.y = (station.latitude - originLatitude) * scalingFactor;
+		
         return station;
     }
 
@@ -94,15 +107,13 @@ $(function () {
         var stationSphereMaterial = new THREE.MeshLambertMaterial({color:0x333333})
         var sideLength = Math.ceil(Math.sqrt(stations.length));
         var margin = 100;
-        var centeringOffset = new THREE.Vector3(-(sideLength/2)*margin, -(sideLength/2)*margin, 0);
 
         var stationSpheres = [];
         for(var i=0; i<stations.length; i++) {
             var sphere = new THREE.Mesh(new THREE.SphereGeometry(10, 10, 10), stationSphereMaterial);
             sphere.overdraw = true;
             sphere.stationData = stations[i];
-            sphere.position.set((i%sideLength)*margin, Math.floor(i/sideLength)*margin, 0);
-            sphere.position.add(centeringOffset)
+            sphere.position.set(stations[i].x, stations[i].y, 0);
 
             stations[i].sphereGeometry = sphere;
             stationSpheres.push(stationSpheres);
