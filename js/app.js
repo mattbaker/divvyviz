@@ -1,4 +1,6 @@
 $(function () {
+	var showMap = false;
+	
     function processTrip(trip) {
         trip.starttime = new Date(trip.starttime);
         trip.stoptime = new Date(trip.stoptime);
@@ -78,15 +80,16 @@ $(function () {
 
 
         /* image test */
-
-        var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
-            map:THREE.ImageUtils.loadTexture('textures/chicago.png')
-        });
-        img.map.needsUpdate = true;
-        // plane1200 × 1524
-        var plane = new THREE.Mesh(new THREE.PlaneGeometry(2010, 2552),img);
-        plane.overdraw = true;
-        scene.add(plane);
+		if(showMap){
+			var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
+				map:THREE.ImageUtils.loadTexture('textures/chicago.png')
+			});
+			img.map.needsUpdate = true;
+			// plane1200 × 1524
+			var plane = new THREE.Mesh(new THREE.PlaneGeometry(2010, 2552),img);
+			plane.overdraw = true;
+			scene.add(plane);
+		}
 
         /* end image test */
 
