@@ -41,7 +41,6 @@ $(function () {
     $.when(tripRequest, stationRequest).done(init);
 
     function init() {
-
         /* Stats shit */
         var stats = new Stats();
         stats.setMode(0); // 0: fps, 1: ms
@@ -104,8 +103,8 @@ $(function () {
 
             var start = startStationPos.clone().add(randomOffset).setZ(margin);
             var end = endStationPos.clone().add(randomOffset).setZ(margin);
-            var vertex = start;
-
+            var vertex = new THREE.Vector3(0,0,-1000)
+            vertex.start = start;
             vertex.trip = trips[i];
             vertex.direction = end.clone().sub(start);
             particleGeometry.vertices.push(vertex);
@@ -117,17 +116,16 @@ $(function () {
 
         var currentTime = new Date("6/27/2013 12:00");
         var endTime = new Date("7/13/2013");
-        var inc = 1/end;
         function animate() {
             stats.begin();
             if (currentTime < endTime) {
-                currentTime.setMilliseconds(currentTime.getMilliseconds()+(1000*60));
+                currentTime.setMilliseconds(currentTime.getMilliseconds()+(1000*60*5));
                 for(var i=0; i<particleGeometry.vertices.length; i++) {
                     var vertex = particleGeometry.vertices[i];
                     if (currentTime >= vertex.trip.starttime && currentTime <= vertex.trip.stoptime) {
                         var timespent = currentTime - vertex.trip.starttime;
                         var pct = timespent / vertex.trip.tripduration;
-                        vertex.set(vertex.direction.clone().multiplyScalar(pct));
+                        vertex.copy(vertex.start.clone().add(vertex.direction.clone().multiplyScalar(pct)));
                     }
                 }
                 particleGeometry.verticesNeedUpdate = true;
