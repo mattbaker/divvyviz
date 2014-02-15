@@ -6,11 +6,62 @@
   <script src="js-lib/three.min.js"></script>
   <script src="js-lib/stats.min.js"></script>
   <script src="js-lib/OrbitControls.js"></script>
+  <script src="js-lib/TrackballControls.js"></script>
   <script src="js-lib/d3.v3.min.js"></script>
   <script src="js/app.js"></script>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 	<div id="date-display"></div>
+  <script type="x-glsl" id="vertex-shader">
+    /**
+     * Multiply each vertex by the
+     * model-view matrix and the
+     * projection matrix (both provided
+     * by Three.js) to get a final
+     * vertex position
+     */
+
+    uniform float current_time;
+
+    attribute vec4 direction;
+    attribute float start_time;
+    attribute float duration;
+
+
+    // vec4 calcPos(vec4 pos, vec4 target, float t) {
+    //   return (pos + ((target - pos) * min(t/(60.0*4.0),1.0)));
+    // }
+
+    void main() {
+      vec4 start_position = vec4(position,1.0);
+      vec4 new_position = vec4(-10000,-10000,-10000,1.0);
+      float time_spent = current_time-start_time;
+      float pct_complete = min(1.0,max(0.0, time_spent/duration));
+      
+      if (pct_complete != 0.0 && pct_complete != 1.0) {
+        new_position = start_position + (direction * pct_complete);
+      }
+      gl_Position = projectionMatrix *
+                  modelViewMatrix *
+                  new_position;
+      gl_PointSize = 5.0;
+    }   
+  </script>
+
+  <script type="x-glsl" id="fragment-shader">
+    /**
+     * Set the colour to a lovely pink.
+     * Note that the color is a 4D Float
+     * Vector, R,G,B and A and each part
+     * runs from 0.0 to 1.0
+     */
+
+    void main() {
+      float opacity = 1.0;
+      gl_FragColor = vec4(0.39, 0.86, 1.0, 0.8);
+    }
+    
+  </script>
 </body>
 </html>

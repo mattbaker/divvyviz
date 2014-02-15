@@ -1,11 +1,22 @@
 $(function () {
 	var showMap = false;
-	
+
+    function createShaderMaterial(vshaderId, fshaderId, uniforms, attributes) {
+        var vShader = $(vshaderId);
+        var fShader = $(fshaderId);
+        return new THREE.ShaderMaterial({
+            vertexShader:   vShader.text(),
+            fragmentShader: fShader.text(),
+            uniforms: uniforms || {},
+            attributes: attributes || []
+          });
+    }
+
     function processTrip(trip) {
-        trip.starttime = new Date(trip.starttime);
-        trip.stoptime = new Date(trip.stoptime);
+        trip.starttime = +(new Date(trip.starttime));
+        trip.stoptime = +(new Date(trip.stoptime));
         trip.tripduration = trip.stoptime - trip.starttime; // Easier if they match
-        trip.birthyear = trip.birthyear ? new Date(trip.birthyear) : false;
+        //trip.birthyear = trip.birthyear ? new Date(trip.birthyear) : false;
         return trip;
     }
 	
@@ -30,24 +41,26 @@ $(function () {
     var tripRequest = $.Deferred();
     var trips = [];
     tripRequest.done(function (parsedTrips) {
+        console.time("Trips Processed")
         trips = parsedTrips.map(processTrip);
-        console.log("Trips Loaded.");
+        console.timeEnd("Trips Processed");
     });
 
     console.log("Loading Trips...");
-    d3.csv("data/Divvy_Trips_2013.small.csv", function (parsedTrips) { tripRequest.resolve(parsedTrips) });
+    d3.csv("data/Divvy_Trips_2013.csv", function (parsedTrips) { tripRequest.resolve(parsedTrips) });
 
 
     var stationRequest = $.Deferred();
     var stations = [];
     var stationLookup = {};
     stationRequest.done(function (parsedStations) {
+        console.time("Stations Processed")
         stations = parsedStations.map(processStation);
         for(var i=0; i<stations.length; i++) {
             var station = stations[i];
             stationLookup[station.name] = station;
         }
-        console.log("Stations Loaded.");
+        console.timeEnd("Stations Processed")
     });
 
     console.log("Loading Stations...");
@@ -67,6 +80,8 @@ $(function () {
         var renderer = new THREE.WebGLRenderer({antialias:false});
         var camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 10000);
         camera.position.z = 3500;
+
+
         var controls = new THREE.OrbitControls(camera);
 
         var scene = new THREE.Scene();
@@ -90,13 +105,22 @@ $(function () {
 			plane.overdraw = true;
 			scene.add(plane);
 		}
-
         /* end image test */
 
         var particleGeometry = new THREE.Geometry();
-        var particleMaterial = new THREE.ParticleBasicMaterial({size:10, color:0x63ddff});
+        //var particleMaterial = new THREE.ParticleBasicMaterial({size:10, color:0x63ddff});
+        var particleUniforms = {
+            current_time: {type:'f', value:0}
+        };
+        var particleAttributes = {
+            direction: {type:'v4', value:[]},
+            start_time: {type:'f', value:[]},
+            duration: {type:'f', value:[]}
+        };
+        var particleMaterial = createShaderMaterial("#vertex-shader", "#fragment-shader",
+            particleUniforms, particleAttributes);
         var ps = new THREE.ParticleSystem(particleGeometry, particleMaterial);
-        ps.dynamic = true;
+        // ps.dynamic = true;
 
 
         var onResize = function () {
@@ -107,9 +131,9 @@ $(function () {
         window.addEventListener('resize', onResize, false);
 
 
-        var stationSphereMaterial = new THREE.MeshLambertMaterial({color:0x333333})
+        var stationSphereMaterial = new THREE.MeshLambertMaterial({color:0xff0000})
         var sideLength = Math.ceil(Math.sqrt(stations.length));
-        var margin = 100;
+        var tripsZ = 100;
 
         var stationSpheres = [];
         for(var i=0; i<stations.length; i++) {
@@ -127,44 +151,41 @@ $(function () {
         for(var i=0; i<trips.length; i++) {
             var startStationPos = stationLookup[trips[i].from_station_name].sphereGeometry.position;
             var endStationPos = stationLookup[trips[i].to_station_name].sphereGeometry.position;
-            var randomOffset = pointWithinBounds(-margin/2, margin/2, -margin/2, margin/2, 0, 0);
+            var randomOffset = pointWithinBounds(0, 10, 0, 10, 0, 0);
 
-            var start = startStationPos.clone().add(randomOffset).setZ(margin);
-            var end = endStationPos.clone().add(randomOffset).setZ(margin);
-            var vertex = new THREE.Vector3(0,0,-1000)
-            vertex.start = start;
-            vertex.trip = trips[i];
-            vertex.direction = end.clone().sub(start);
+            var start = startStationPos.clone().add(randomOffset).setZ(tripsZ);
+            var end = endStationPos.clone().add(randomOffset).setZ(tripsZ);
+            var vertex = start;//clone if vertex gets mutated later!
+            var direction = (new THREE.Vector4()).copy(end.sub(start));
             particleGeometry.vertices.push(vertex);
+            particleAttributes.direction.value.push(direction);
+            particleAttributes.start_time.value.push(trips[i].starttime);
+            particleAttributes.duration.value.push(trips[i].tripduration)
         }
         scene.add(ps);
 
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        var currentTime = new Date("6/27/2013 12:00");
-        var endTime = new Date("7/13/2013");
+        var currentTime = 1372352400000;//+(new Date("6/27/2013 12:00"));
+        var endTime = 1388551740000; //+(new Date("12/31/2013 22:49"));
+        var currentDate = new Date(1372352400000);
         function animate() {
             stats.begin();
             if (currentTime < endTime) {
-                currentTime.setMilliseconds(currentTime.getMilliseconds()+(1000*60*5));
-                for(var i=0; i<particleGeometry.vertices.length; i++) {
-                    var vertex = particleGeometry.vertices[i];
-                    if (currentTime >= vertex.trip.starttime && currentTime <= vertex.trip.stoptime) {
-                        var timespent = currentTime - vertex.trip.starttime;
-                        var pct = timespent / vertex.trip.tripduration;
-                        vertex.copy(vertex.start.clone().add(vertex.direction.clone().multiplyScalar(pct)));
-                    }
-                }
-                particleGeometry.verticesNeedUpdate = true;
+                currentTime+=1000*60*10;
+                particleUniforms.current_time.value = currentTime;
             }
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
             controls.update();
-			$('#date-display').text(currentTime);
             stats.end();
         }
         animate();
+        setInterval(function () {
+            // currentDate.setMilliseconds(currentTime); //recycle a single date object
+            $('#date-display').text(new Date(currentTime));
+        }, 1000)
     }
 
     function randomWithinBound(bm, bM) {
