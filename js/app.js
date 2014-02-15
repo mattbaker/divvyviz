@@ -63,6 +63,20 @@ $(function () {
         directionalLight.position.set(0, 0, 100).normalize();
         scene.add(directionalLight);
 
+
+        /* image test */
+
+        var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
+            map:THREE.ImageUtils.loadTexture('textures/chicago.png')
+        });
+        img.map.needsUpdate = true;
+        // plane1200 × 1524
+        var plane = new THREE.Mesh(new THREE.PlaneGeometry(2010, 2552),img);
+        plane.overdraw = true;
+        scene.add(plane);
+
+        /* end image test */
+
         var particleGeometry = new THREE.Geometry();
         var particleMaterial = new THREE.ParticleBasicMaterial({size:10, color:0x63ddff});
         var ps = new THREE.ParticleSystem(particleGeometry, particleMaterial);
